@@ -1,51 +1,55 @@
 class Promize {
-  constructor(executorFn) {
-    if (executorFn === undefined) {
+  constructor(fn) {
+    if (fn === undefined) {
       throw Error("Executor Function is undefined!");
     }
 
-    this.status = "pending";
-    this.chain = [];
+    if (typeof fn !== "function") {
+      throw Error("Executor Function is not a function!");
+    }
 
-    this.value = undefined;
+    this.state = "pending";
+    this.result = undefined;
+    this.promizeFns = [];
 
-    try {
-      executorFn(this.resolve, this.reject);
-    } catch (err) {
+    this.resolve = function (value) {
+      try {
+        this.result = this.promizeFns.reduce((acc, fn) => fn(acc), value);
+        this.state = "resolved";
+        this.then(promizeFns.shift());
+      } catch (err) {}
+    };
+
+    this.reject = function (err) {
+      this.result = err;
+      this.state = "rejected";
+    };
+
+    this.catch = function (eff) {
       this.reject(err);
-    }
-  }
+    };
 
-  errHandler(err) {
-    throw new Error(err);
-  }
+    this.then = function (fn) {
+      if (this.state === "resloved") {
+        try {
+          fn(this.resolve, this.reject);
+        } catch (err) {
+          this.catch(err);
+        }
+      } else if (this.state === "rejected") {
+        this.rejectFn = rejectFn;
+      } else {
+        this.promizeFns.push(fn);
+      }
+      return this;
+    };
 
-  resolve(val) {
-    let value = val;
     try {
-      this.chain.forEach((eFn) => {
-        value = eFn(value);
-      });
+      fn(this.resolve, this.reject);
     } catch (err) {
-      console.log(err);
+      this.catch(err);
     }
-    this.status = "resolved";
   }
-
-  reject(val) {
-    this.status = "rejected";
-    this.value = val;
-  }
-
-  then(eFn) {
-    this.chain.push(eFn);
-    return this;
-  }
-
-  //   catch(err) {
-  //     this.errHandler = err;
-  //     return this;
-  //   }
 }
 
 module.exports = Promize;
